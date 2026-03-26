@@ -1,0 +1,114 @@
+# SAP Order-to-Cash Graph Query System
+
+A context graph system with an LLM-powered natural language query interface built over an SAP Order-to-Cash dataset.
+
+## Architecture
+
+```
+┌─────────────────────────────────────────────────────┐
+│                   Frontend (Single HTML)             │
+│  D3.js force-directed graph + React chat interface  │
+└─────────────────────────┬───────────────────────────┘
+                          │ HTTP / JSON
+┌─────────────────────────▼───────────────────────────┐
+│            Python stdlib HTTP Server                 │
+│   /api/graph → NetworkX graph → JSON                │
+│   /api/query → Guardrail → LLM/Fallback → SQL       │
+└─────────────────────────┬───────────────────────────┘
+                          │ sqlite3
+┌─────────────────────────▼───────────────────────────┐
+│                    SQLite Database                   │
+│  customers · sales_orders · sales_order_items       │
+│  deliveries · delivery_items · invoices · payments  │
+│  materials · plants · addresses                     │
+└─────────────────────────────────────────────────────┘
+```
+
+## Key Design Decisions
+
+### Database: SQLite
+- Zero-ops, no server, single file — deploy anywhere
+- LLMs understand SQL natively — simpler than Cypher/GQL
+- Ideal for the dataset size (hundreds to thousands of records)
+
+### Graph Layer: Python + D3.js
+- Server computes graph topology from relational data (NetworkX-style)
+- D3 force simulation renders it in-browser with drag, zoom, highlight
+- No separate graph database needed — the graph is a **view** of the relational data
+
+### LLM Integration: Groq (llama3-70b)
+- Schema-injected system prompt enables accurate SQL generation
+- Low temperature (0.05) for deterministic query output
+- Structured JSON response format: `{sql, explanation, highlighted_nodes}`
+- Falls back to rule-based SQL if no API key provided
+
+### Guardrails (two layers)
+1. **Keyword filter** (server-side, pre-LLM): rejects known off-topic patterns instantly
+2. **System prompt instruction** (LLM-side): model told to return `GUARDRAIL:` prefix for off-topic queries
+- Both layers return: *"This system is designed to answer questions related to the provided dataset only."*
+
+### Prompting Strategy
+The system prompt injects:
+- Full schema with column names and value domains
+- Explicit instructions to return only JSON (no markdown)
+- `highlighted_nodes` field — maps query results back to graph nodes for visual correlation
+
+## Setup & Run
+
+```bash
+# 1. Generate sample data (or place your CSVs in data/)
+python3 scripts/generate_sample_data.py
+
+# 2. Ingest CSVs into SQLite
+python3 scripts/ingest.py
+
+# 3. Run server (no dependencies needed — pure stdlib)
+python3 backend/server.py
+
+# 4. Open http://localhost:8000
+```
+
+### With Groq LLM (recommended)
+```bash
+GROQ_API_KEY=gsk_your_key_here python3 backend/server.py
+```
+Get a free key at https://console.groq.com — 14,400 requests/day free.
+
+### Using Your Own Dataset
+Place these CSVs in `data/`:
+`customers.csv, addresses.csv, plants.csv, materials.csv, sales_orders.csv,
+sales_order_items.csv, deliveries.csv, delivery_items.csv, invoices.csv, payments.csv`
+
+Then run `python3 scripts/ingest.py`.
+
+## Example Queries
+
+| Query | What it does |
+|---|---|
+| "Which products appear in the most billing documents?" | Joins materials → order items → invoices |
+| "Trace the full flow for SO00001" | Full O2C chain: order → delivery → invoice → payment |
+| "Show broken or incomplete order flows" | Identifies orders missing delivery/invoice/payment |
+| "List all overdue invoices" | Filters invoices by status |
+| "Which customers have the highest revenue?" | Aggregates order totals per customer |
+
+## File Structure
+```
+graph-query-system/
+├── backend/
+│   ├── server.py          # HTTP server, query routing, guardrails
+│   └── graph_builder.py   # Graph construction + schema constant
+├── frontend/
+│   └── index.html         # Complete UI (React + D3, self-contained)
+├── data/
+│   ├── otc.db             # SQLite database (generated)
+│   └── *.csv              # Raw data files
+└── scripts/
+    ├── generate_sample_data.py
+    └── ingest.py
+```
+
+## Deployment (Railway / Render / Fly.io)
+Set `GROQ_API_KEY` as an environment variable and run:
+```bash
+python3 scripts/ingest.py && python3 backend/server.py
+```

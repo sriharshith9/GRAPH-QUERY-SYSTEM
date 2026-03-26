@@ -1,0 +1,626 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Order to Cash — Graph Query</title>
+<script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body, #root {
+  height: 100%; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background: #f5f6fa; color: #1a1a2e; overflow: hidden;
+}
+#root { display: flex; flex-direction: column; }
+
+/* ── Top bar ── */
+.topbar {
+  height: 44px; background: #fff; border-bottom: 1px solid #e8eaf0;
+  display: flex; align-items: center; padding: 0 16px; gap: 8px; flex-shrink: 0;
+  font-size: 13px; color: #888;
+}
+.topbar .icon-btn {
+  width: 30px; height: 30px; border: 1px solid #e8eaf0; border-radius: 6px;
+  display: flex; align-items: center; justify-content: center; cursor: pointer;
+  font-size: 14px; color: #666; background: #fff;
+}
+.topbar .icon-btn:hover { background: #f5f6fa; }
+.topbar .sep { color: #ccc; }
+.topbar .title { font-size: 14px; font-weight: 600; color: #1a1a2e; }
+.topbar .spacer { flex: 1; }
+.topbar .more-btn {
+  width: 32px; height: 32px; border: 1px solid #e8eaf0; border-radius: 8px;
+  display: flex; align-items: center; justify-content: center; cursor: pointer;
+  font-size: 16px; color: #888; background: #fff; letter-spacing: 1px;
+}
+.topbar .more-btn:hover { background: #f5f6fa; }
+
+/* ── Layout ── */
+.workspace { display: flex; flex: 1; overflow: hidden; }
+
+/* ── Graph area ── */
+.graph-area {
+  flex: 1; position: relative; background: #f9fafc; overflow: hidden;
+}
+#graph-svg { width: 100%; height: 100%; }
+
+/* Graph toolbar */
+.graph-toolbar {
+  position: absolute; top: 14px; left: 14px; display: flex; gap: 8px;
+}
+.graph-toolbar button {
+  height: 32px; padding: 0 12px; border-radius: 6px; border: 1px solid #e0e2eb;
+  background: #fff; font-size: 12px; color: #555; cursor: pointer; font-weight: 500;
+  display: flex; align-items: center; gap: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+}
+.graph-toolbar button:hover { background: #f5f6fa; }
+.graph-toolbar button.active { background: #1a1a2e; color: #fff; border-color: #1a1a2e; }
+
+/* Node popup */
+.node-popup {
+  position: absolute; background: #fff; border: 1px solid #e0e2eb;
+  border-radius: 10px; padding: 14px 16px; width: 280px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.1); z-index: 50; pointer-events: auto;
+  font-size: 12px;
+}
+.node-popup h4 {
+  font-size: 13px; font-weight: 700; color: #1a1a2e; margin-bottom: 10px;
+  padding-bottom: 8px; border-bottom: 1px solid #f0f1f5;
+}
+.node-popup .prop { display: flex; justify-content: space-between; padding: 3px 0; }
+.node-popup .prop .k { color: #888; font-weight: 500; }
+.node-popup .prop .v { color: #1a1a2e; font-weight: 500; text-align: right; max-width: 55%; word-break: break-all; }
+.node-popup .more-fields { color: #aaa; font-size: 11px; margin-top: 6px; font-style: italic; }
+.node-popup .connections { color: #555; font-size: 12px; margin-top: 8px; font-weight: 600; }
+
+/* Legend */
+.graph-legend {
+  position: absolute; bottom: 16px; left: 16px; background: rgba(255,255,255,0.92);
+  border: 1px solid #e0e2eb; border-radius: 10px; padding: 10px 14px;
+  font-size: 11px; box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+}
+.graph-legend .leg-title { font-weight: 700; color: #666; text-transform: uppercase;
+  font-size: 10px; letter-spacing: 0.5px; margin-bottom: 6px; }
+.leg-item { display: flex; align-items: center; gap: 7px; color: #555; padding: 2px 0; }
+.leg-dot { width: 9px; height: 9px; border-radius: 50%; }
+
+/* Hint */
+.graph-hint {
+  position: absolute; bottom: 16px; right: 16px; font-size: 11px; color: #aaa;
+  background: rgba(255,255,255,0.8); padding: 5px 10px; border-radius: 6px;
+}
+
+/* ── Chat panel ── */
+.chat-panel {
+  width: 360px; flex-shrink: 0; background: #fff; border-left: 1px solid #e8eaf0;
+  display: flex; flex-direction: column;
+}
+.chat-header {
+  padding: 14px 16px 10px; border-bottom: 1px solid #f0f1f5;
+}
+.chat-header .chat-title { font-size: 12px; font-weight: 600; color: #aaa;
+  text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
+.chat-header .chat-sub { font-size: 11px; color: #bbb; }
+.agent-row { display: flex; align-items: center; gap: 10px; margin-top: 10px; }
+.agent-avatar {
+  width: 32px; height: 32px; border-radius: 50%; background: #1a1a2e;
+  display: flex; align-items: center; justify-content: center;
+  color: #fff; font-size: 13px; font-weight: 700; flex-shrink: 0;
+}
+.agent-name { font-size: 13px; font-weight: 600; color: #1a1a2e; }
+.agent-role { font-size: 11px; color: #aaa; }
+
+/* Messages */
+.messages {
+  flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 16px;
+}
+.messages::-webkit-scrollbar { width: 3px; }
+.messages::-webkit-scrollbar-thumb { background: #e0e2eb; border-radius: 2px; }
+
+.msg-row { display: flex; gap: 8px; }
+.msg-row.user { flex-direction: row-reverse; }
+.msg-avatar {
+  width: 28px; height: 28px; border-radius: 50%; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; font-weight: 700;
+}
+.msg-avatar.ai { background: #1a1a2e; color: #fff; }
+.msg-avatar.user { background: #e8eaf0; color: #555; }
+
+.msg-bubble {
+  max-width: 88%; font-size: 13px; line-height: 1.55; color: #1a1a2e;
+  padding: 10px 13px; border-radius: 10px;
+}
+.msg-bubble.ai { background: #f5f6fa; border-bottom-left-radius: 3px; }
+.msg-bubble.user {
+  background: #1a1a2e; color: #fff;
+  border-bottom-right-radius: 3px;
+}
+.msg-bubble.guardrail { background: #fff8e1; color: #b8860b; border: 1px solid #ffe082; }
+
+.sql-toggle {
+  font-size: 11px; color: #aaa; cursor: pointer; margin-top: 6px;
+  display: inline-flex; align-items: center; gap: 4px;
+}
+.sql-toggle:hover { color: #1a1a2e; }
+.sql-block {
+  margin-top: 6px; background: #1a1a2e; color: #69f0ae;
+  border-radius: 6px; padding: 8px 10px; font-family: monospace;
+  font-size: 11px; overflow-x: auto; white-space: pre;
+}
+.results-mini { margin-top: 8px; overflow-x: auto; }
+.results-mini table { width: 100%; border-collapse: collapse; font-size: 11px; }
+.results-mini th {
+  background: #f0f1f5; color: #666; padding: 4px 7px;
+  text-align: left; font-weight: 600; white-space: nowrap;
+}
+.results-mini td {
+  padding: 4px 7px; border-bottom: 1px solid #f0f1f5; color: #333;
+  max-width: 110px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.results-mini tr:hover td { background: #f9fafc; }
+.more-rows { font-size: 10px; color: #aaa; margin-top: 4px; }
+
+.typing-dots { display: flex; gap: 4px; align-items: center; padding: 4px 0; }
+.typing-dots span {
+  width: 6px; height: 6px; border-radius: 50%; background: #bbb;
+  animation: tdot 1.1s infinite;
+}
+.typing-dots span:nth-child(2) { animation-delay: 0.2s; }
+.typing-dots span:nth-child(3) { animation-delay: 0.4s; }
+@keyframes tdot { 0%,80%,100%{opacity:0.3;transform:scale(0.8)} 40%{opacity:1;transform:scale(1)} }
+
+/* Input area */
+.input-area { border-top: 1px solid #f0f1f5; padding: 12px; }
+.status-row {
+  display: flex; align-items: center; gap: 6px; font-size: 11px; color: #888;
+  margin-bottom: 8px;
+}
+.status-dot {
+  width: 7px; height: 7px; border-radius: 50%; background: #4caf50; flex-shrink: 0;
+}
+.input-box {
+  display: flex; gap: 8px; align-items: flex-end;
+  border: 1px solid #e0e2eb; border-radius: 8px; padding: 8px 10px;
+  background: #f9fafc;
+}
+.input-box textarea {
+  flex: 1; background: transparent; border: none; outline: none; resize: none;
+  font-size: 13px; color: #1a1a2e; font-family: inherit; line-height: 1.4;
+  max-height: 80px;
+}
+.input-box textarea::placeholder { color: #bbb; }
+.send-btn {
+  background: #1a1a2e; border: none; border-radius: 6px; padding: 6px 14px;
+  color: #fff; font-size: 12px; font-weight: 600; cursor: pointer; flex-shrink: 0;
+  transition: opacity 0.15s;
+}
+.send-btn:hover { opacity: 0.85; }
+.send-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+
+/* Suggestions */
+.suggestions { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 8px; }
+.chip {
+  font-size: 11px; padding: 4px 9px; border-radius: 20px;
+  background: #f0f1f5; border: 1px solid #e0e2eb; color: #555;
+  cursor: pointer; transition: all 0.15s; white-space: nowrap;
+}
+.chip:hover { background: #1a1a2e; color: #fff; border-color: #1a1a2e; }
+
+/* API key banner */
+.api-banner {
+  font-size: 11px; padding: 6px 12px; background: #fffbea; border-bottom: 1px solid #ffe082;
+  color: #8a6d00; display: flex; align-items: center; gap: 8px;
+}
+.api-banner a { color: #5c4a00; text-decoration: underline; cursor: pointer; }
+.api-banner input {
+  flex: 1; border: 1px solid #ffe082; border-radius: 4px; padding: 3px 7px;
+  font-size: 11px; background: #fff; outline: none; color: #333;
+}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useEffect, useRef, useCallback } = React;
+
+const API = window.location.origin;
+
+const TYPE_COLORS = {
+  customer:      '#7c6bf5',
+  sales_order:   '#26c6a0',
+  delivery:      '#f5a623',
+  invoice:       '#e05c8a',
+  payment:       '#43c478',
+  material:      '#29b6f6',
+  plant:         '#ff8a65',
+};
+const TYPE_ICONS = {
+  customer:'👤', sales_order:'📦', delivery:'🚚',
+  invoice:'🧾', payment:'💳', material:'🔩', plant:'🏭',
+};
+const NODE_R = { customer:13, sales_order:10, delivery:9, invoice:9, payment:8, material:11, plant:12 };
+
+const SUGGESTIONS = [
+  'Products with most billing docs?',
+  'Show broken order flows',
+  'Trace flow for SO00001',
+  'Overdue invoices',
+  'Top customers by revenue',
+];
+
+// ── Graph ──────────────────────────────────────────────────────────────────
+function GraphView({ graphData, highlighted, onNodeSelect }) {
+  const svgRef = useRef(null);
+  const simRef = useRef(null);
+  const [popup, setPopup] = useState(null);   // {x, y, node, connections}
+  const [showOverlay, setShowOverlay] = useState(true);
+  const nodeMapRef = useRef({});
+
+  useEffect(() => {
+    if (!graphData?.nodes?.length || !svgRef.current) return;
+    const { nodes, edges } = graphData;
+
+    // Build lookup
+    nodeMapRef.current = {};
+    nodes.forEach(n => nodeMapRef.current[n.id] = n);
+
+    const el = svgRef.current;
+    const W = el.clientWidth || 900;
+    const H = el.clientHeight || 600;
+
+    const svg = d3.select(el);
+    svg.selectAll('*').remove();
+
+    const g = svg.append('g');
+    svg.call(d3.zoom().scaleExtent([0.08, 5]).on('zoom', e => g.attr('transform', e.transform)));
+
+    // Arrowhead
+    svg.append('defs').append('marker')
+      .attr('id','arr').attr('viewBox','0 -3 6 6')
+      .attr('refX', 18).attr('refY', 0)
+      .attr('markerWidth', 5).attr('markerHeight', 5)
+      .attr('orient', 'auto')
+      .append('path').attr('d','M0,-3L6,0L0,3').attr('fill','#c8cce0');
+
+    const link = g.append('g').selectAll('line').data(edges).join('line')
+      .attr('stroke', '#d2d6e8').attr('stroke-width', 1)
+      .attr('marker-end','url(#arr)').attr('opacity', 0.7);
+
+    const node = g.append('g').selectAll('g').data(nodes).join('g')
+      .attr('cursor','pointer')
+      .call(d3.drag()
+        .on('start',(e,d)=>{ if(!e.active) simRef.current.alphaTarget(0.3).restart(); d.fx=d.x; d.fy=d.y; })
+        .on('drag',(e,d)=>{ d.fx=e.x; d.fy=e.y; })
+        .on('end',(e,d)=>{ if(!e.active) simRef.current.alphaTarget(0); d.fx=null; d.fy=null; }))
+      .on('click',(e,d)=>{
+        e.stopPropagation();
+        const connEdges = edges.filter(ed => ed.source.id===d.id||ed.target.id===d.id);
+        const rect = el.getBoundingClientRect();
+        setPopup({ svgX: d.x, svgY: d.y, node: d, connections: connEdges.length });
+        onNodeSelect(d);
+      });
+
+    node.append('circle')
+      .attr('r', d => NODE_R[d.type]||9)
+      .attr('fill', d => {
+        const c = TYPE_COLORS[d.type]||'#999';
+        return highlighted.length===0||highlighted.includes(d.id) ? c : `${c}44`;
+      })
+      .attr('stroke', d => highlighted.includes(d.id)?'#fff':'rgba(0,0,0,0.08)')
+      .attr('stroke-width', d => highlighted.includes(d.id)?2.5:0.8);
+
+    node.append('text')
+      .attr('text-anchor','middle').attr('dy','0.35em')
+      .attr('font-size', d=>(NODE_R[d.type]||9)*0.75)
+      .attr('pointer-events','none').attr('fill','#fff').attr('opacity',0.9)
+      .text(d => TYPE_ICONS[d.type]||'');
+
+    const sim = d3.forceSimulation(nodes)
+      .force('link', d3.forceLink(edges).id(d=>d.id).distance(90).strength(0.4))
+      .force('charge', d3.forceManyBody().strength(-250))
+      .force('center', d3.forceCenter(W/2, H/2))
+      .force('collision', d3.forceCollide().radius(d=>(NODE_R[d.type]||9)+6))
+      .on('tick', () => {
+        link.attr('x1',d=>d.source.x).attr('y1',d=>d.source.y)
+            .attr('x2',d=>d.target.x).attr('y2',d=>d.target.y);
+        node.attr('transform', d=>`translate(${d.x},${d.y})`);
+        // update popup position
+        if (popup) {
+          // will be handled via state update on next re-render
+        }
+      });
+    simRef.current = sim;
+
+    svg.on('click', () => { setPopup(null); onNodeSelect(null); });
+    return () => sim.stop();
+  }, [graphData]);
+
+  // Update node highlights
+  useEffect(() => {
+    if (!svgRef.current) return;
+    d3.select(svgRef.current).selectAll('circle')
+      .attr('fill', d => {
+        const c = TYPE_COLORS[d.type]||'#999';
+        return highlighted.length===0||highlighted.includes(d.id) ? c : `${c}44`;
+      })
+      .attr('stroke', d => highlighted.includes(d.id)?'#fff':'rgba(0,0,0,0.08)')
+      .attr('stroke-width', d => highlighted.includes(d.id)?2.5:0.8);
+  }, [highlighted]);
+
+  return (
+    <div style={{position:'relative',width:'100%',height:'100%'}}>
+      <svg ref={svgRef} id="graph-svg" />
+
+      {/* Toolbar */}
+      <div className="graph-toolbar">
+        <button>✦ Minimize</button>
+        <button className={showOverlay?'active':''} onClick={()=>setShowOverlay(v=>!v)}>
+          {showOverlay?'⊞ Hide Granular Overlay':'⊞ Show Granular Overlay'}
+        </button>
+      </div>
+
+      {/* Node popup — positioned absolutely over graph */}
+      {popup && showOverlay && (
+        <NodePopup
+          node={popup.node}
+          connections={popup.connections}
+          svgRef={svgRef}
+          simRef={simRef}
+          onClose={() => { setPopup(null); onNodeSelect(null); }}
+        />
+      )}
+
+      {/* Legend */}
+      <div className="graph-legend">
+        <div className="leg-title">Node Types</div>
+        {Object.entries(TYPE_COLORS).map(([t,c])=>(
+          <div className="leg-item" key={t}>
+            <div className="leg-dot" style={{background:c}}/>
+            <span>{TYPE_ICONS[t]} {t.replace('_',' ')}</span>
+          </div>
+        ))}
+      </div>
+
+      {graphData && (
+        <div className="graph-hint">
+          {graphData.nodes.length} nodes · {graphData.edges.length} edges · scroll to zoom · drag to pan
+        </div>
+      )}
+    </div>
+  );
+}
+
+function NodePopup({ node, connections, svgRef, simRef, onClose }) {
+  const [pos, setPos] = useState({ left: 200, top: 200 });
+
+  useEffect(() => {
+    const update = () => {
+      if (!svgRef.current || !simRef.current) return;
+      const svgEl = svgRef.current;
+      const rect = svgEl.getBoundingClientRect();
+      // Get current transform
+      const t = d3.zoomTransform(svgEl);
+      const sx = t.applyX(node.x);
+      const sy = t.applyY(node.y);
+      setPos({
+        left: Math.min(sx + 16, rect.width - 300),
+        top: Math.max(sy - 20, 10),
+      });
+    };
+    update();
+    const id = setInterval(update, 100);
+    return () => clearInterval(id);
+  }, [node]);
+
+  const props = node.props || {};
+  const allKeys = Object.keys(props);
+  const shown = allKeys.slice(0, 6);
+  const hidden = allKeys.length - shown.length;
+
+  return (
+    <div className="node-popup" style={{ left: pos.left, top: pos.top }}
+      onClick={e => e.stopPropagation()}>
+      <h4>{TYPE_ICONS[node.type]} {node.type.replace('_',' ').replace(/\b\w/g,c=>c.toUpperCase())}</h4>
+      <div className="prop"><span className="k">Entity</span><span className="v">{node.type.replace('_',' ').replace(/\b\w/g,c=>c.toUpperCase())}</span></div>
+      <div className="prop"><span className="k">ID</span><span className="v" style={{color:TYPE_COLORS[node.type],fontWeight:700}}>{node.label || node.id}</span></div>
+      {shown.map(k=>(
+        <div className="prop" key={k}>
+          <span className="k">{k.replace(/_/g,' ')}</span>
+          <span className="v">{String(props[k]||'—').slice(0,35)}</span>
+        </div>
+      ))}
+      {hidden > 0 && <div className="more-fields">Additional {hidden} fields hidden for readability</div>}
+      <div className="connections">Connections: {connections}</div>
+    </div>
+  );
+}
+
+// ── Message ────────────────────────────────────────────────────────────────
+function MsgBubble({ msg }) {
+  const [showSql, setShowSql] = useState(false);
+  const isGuardrail = msg.answer?.includes('designed to answer questions');
+  const text = msg.role === 'user' ? msg.content : (msg.answer || msg.content || '');
+
+  return (
+    <div className={`msg-row ${msg.role}`}>
+      <div className={`msg-avatar ${msg.role}`}>
+        {msg.role==='ai' ? 'D' : 'U'}
+      </div>
+      <div style={{flex:1,minWidth:0}}>
+        {msg.role==='ai' && (
+          <div style={{fontSize:11,color:'#aaa',marginBottom:4,fontWeight:600}}>
+            Dodge AI <span style={{fontWeight:400}}>· Graph Agent</span>
+          </div>
+        )}
+        <div className={`msg-bubble ${msg.role} ${isGuardrail?'guardrail':''}`}>
+          {text}
+        </div>
+        {msg.sql && (
+          <>
+            <span className="sql-toggle" onClick={()=>setShowSql(v=>!v)}>
+              {showSql?'▾':'▸'} View SQL
+            </span>
+            {showSql && <div className="sql-block">{msg.sql}</div>}
+          </>
+        )}
+        {msg.rows?.length > 0 && (
+          <div className="results-mini">
+            <table>
+              <thead><tr>{msg.columns.map(c=><th key={c}>{c}</th>)}</tr></thead>
+              <tbody>{msg.rows.slice(0,8).map((r,i)=>(
+                <tr key={i}>{msg.columns.map(c=><td key={c} title={String(r[c]??'')}>{String(r[c]??'—').slice(0,25)}</td>)}</tr>
+              ))}</tbody>
+            </table>
+            {msg.rows.length > 8 && <p className="more-rows">Showing 8 of {msg.rows.length} rows</p>}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── App ────────────────────────────────────────────────────────────────────
+function App() {
+  const [graphData, setGraphData] = useState(null);
+  const [stats, setStats] = useState(null);
+  const [msgs, setMsgs] = useState([
+    { role:'ai', answer:'Hi! I can help you analyze the Order to Cash process.' }
+  ]);
+  const [input, setInput] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [highlighted, setHighlighted] = useState([]);
+  const [selectedNode, setSelectedNode] = useState(null);
+  const [apiKey, setApiKey] = useState('');
+  const [showApiInput, setShowApiInput] = useState(false);
+  const endRef = useRef(null);
+  const taRef = useRef(null);
+
+  useEffect(() => {
+    fetch(`${API}/api/graph`).then(r=>r.json()).then(setGraphData).catch(()=>{});
+    fetch(`${API}/api/stats`).then(r=>r.json()).then(setStats).catch(()=>{});
+  }, []);
+
+  useEffect(() => { endRef.current?.scrollIntoView({ behavior:'smooth' }); }, [msgs]);
+
+  const send = useCallback(async (q) => {
+    q = q.trim(); if (!q || loading) return;
+    setMsgs(m=>[...m, { role:'user', content:q }]);
+    setInput(''); setLoading(true);
+    try {
+      const r = await fetch(`${API}/api/query`, {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ question:q, groq_key:apiKey||undefined })
+      });
+      const data = await r.json();
+      setMsgs(m=>[...m, { role:'ai', ...data }]);
+      if (data.highlighted_nodes?.length) setHighlighted(data.highlighted_nodes);
+    } catch(e) {
+      setMsgs(m=>[...m, { role:'ai', answer:`Error: ${e.message}` }]);
+    } finally { setLoading(false); }
+  }, [loading, apiKey]);
+
+  const onKey = (e) => {
+    if (e.key==='Enter' && !e.shiftKey) { e.preventDefault(); send(input); }
+  };
+
+  return (
+    <>
+      {/* Top bar */}
+      <div className="topbar">
+        <div className="icon-btn">⊡</div>
+        <span className="sep">|</span>
+        <span>Mapping</span>
+        <span className="sep">/</span>
+        <span className="title">Order to Cash</span>
+        <div className="spacer" />
+        {stats && (
+          <span style={{fontSize:11,color:'#aaa',marginRight:8}}>
+            {stats.sales_orders} orders · {stats.invoices} invoices · {stats.customers} customers
+          </span>
+        )}
+        <div className="more-btn" onClick={()=>setShowApiInput(v=>!v)}>···</div>
+      </div>
+
+      {/* API key input */}
+      {showApiInput && (
+        <div className="api-banner">
+          <span>⚡ Groq API key for LLM queries:</span>
+          <input type="password" placeholder="gsk_... (get free at console.groq.com)"
+            value={apiKey} onChange={e=>setApiKey(e.target.value)} />
+          <span style={{cursor:'pointer'}} onClick={()=>setShowApiInput(false)}>✕</span>
+        </div>
+      )}
+
+      {/* Workspace */}
+      <div className="workspace">
+        {/* Graph */}
+        <div className="graph-area">
+          {!graphData
+            ? <div style={{height:'100%',display:'flex',alignItems:'center',justifyContent:'center',color:'#bbb',fontSize:13}}>Loading graph…</div>
+            : <GraphView graphData={graphData} highlighted={highlighted} onNodeSelect={setSelectedNode} />
+          }
+        </div>
+
+        {/* Chat */}
+        <div className="chat-panel">
+          <div className="chat-header">
+            <div className="chat-title">Chat with Graph</div>
+            <div className="chat-sub">Order to Cash</div>
+            <div className="agent-row">
+              <div className="agent-avatar">D</div>
+              <div>
+                <div className="agent-name">Dodge AI</div>
+                <div className="agent-role">Graph Agent</div>
+              </div>
+            </div>
+          </div>
+
+          <div className="messages">
+            {msgs.map((m,i)=><MsgBubble key={i} msg={m} />)}
+            {loading && (
+              <div className="msg-row ai">
+                <div className="msg-avatar ai">D</div>
+                <div>
+                  <div style={{fontSize:11,color:'#aaa',marginBottom:4,fontWeight:600}}>Dodge AI · Graph Agent</div>
+                  <div className="msg-bubble ai"><div className="typing-dots"><span/><span/><span/></div></div>
+                </div>
+              </div>
+            )}
+            <div ref={endRef}/>
+          </div>
+
+          <div className="input-area">
+            <div className="status-row">
+              <div className="status-dot"/>
+              <span>{apiKey ? 'LLM active (Groq)' : 'Dodge AI is awaiting instructions'}</span>
+            </div>
+            <div className="suggestions">
+              {SUGGESTIONS.map((s,i)=>(
+                <div key={i} className="chip" onClick={()=>send(s)}>{s}</div>
+              ))}
+            </div>
+            <div className="input-box">
+              <textarea
+                ref={taRef} rows={1} placeholder="Analyze anything"
+                value={input} onChange={e=>setInput(e.target.value)}
+                onKeyDown={onKey} disabled={loading}
+              />
+              <button className="send-btn" onClick={()=>send(input)} disabled={!input.trim()||loading}>
+                Send
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>

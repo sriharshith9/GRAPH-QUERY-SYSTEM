@@ -1,0 +1,21 @@
+customer_id,name,region,credit_limit,created_date
+C0001,Acme Corp,North,50000,2022-01-29
+C0002,Blue Ridge Ltd,East,100000,2020-08-16
+C0003,Coastal Supplies,South,50000,2021-11-23
+C0004,Delta Dynamics,Central,50000,2021-08-27
+C0005,Eagle Eye Inc,West,50000,2020-01-31
+C0006,Forte Solutions,North,100000,2020-08-26
+C0007,Globex Corp,Central,50000,2021-07-28
+C0008,Harbor Freight,South,500000,2020-08-13
+C0009,Iris Technologies,West,200000,2022-04-08
+C0010,Jupiter LLC,North,100000,2021-12-15
+C0011,Keystone Partners,West,200000,2020-10-11
+C0012,Lumina Group,South,100000,2022-09-07
+C0013,MegaMart,East,50000,2020-04-04
+C0014,Nexus Corp,West,50000,2021-01-02
+C0015,Orbit Systems,East,200000,2022-04-06
+C0016,Pacific Rim Co,North,500000,2021-07-03
+C0017,Quantum Leap,North,500000,2020-03-21
+C0018,Ridge Runner,Central,200000,2022-04-29
+C0019,Stellar Tech,Central,200000,2021-08-14
+C0020,Titan Industries,South,50000,2020-02-16

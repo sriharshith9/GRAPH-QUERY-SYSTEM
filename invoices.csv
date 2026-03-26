@@ -1,0 +1,21 @@
+material_id,description,material_group,unit_price,weight_kg
+M0001,Industrial Pump A,ELEC,2704.61,28.5
+M0002,Conveyor Belt Unit,ELEC,1428.8,50.3
+M0003,Safety Valve Pro,MECH,2243.5,172.3
+M0004,Control Panel X,MECH,300.41,199.9
+M0005,Hydraulic Press,MECH,4846.53,185.3
+M0006,Filter Assembly,ELEC,873.24,97.4
+M0007,Motor Drive,ELEC,4330.02,180.5
+M0008,Sensor Array,ELEC,1925.92,197.1
+M0009,Cable Harness,FLUID,4636.26,157.1
+M0010,Power Supply Unit,FLUID,2143.89,191.5
+M0011,Compressor Kit,CTRL,816.24,59.7
+M0012,Heat Exchanger,MECH,2916.94,108.7
+M0013,Flow Meter,FLUID,332.97,117.0
+M0014,Pressure Gauge,ELEC,331.55,101.8
+M0015,Relay Module,ELEC,389.18,14.1
+M0016,Transformer Unit,ELEC,2048.69,188.3
+M0017,Circuit Breaker,ELEC,2915.65,8.4
+M0018,Valve Actuator,MECH,2125.16,116.9
+M0019,Pump Seal Kit,FLUID,4676.8,41.2
+M0020,Bearing Assembly,FLUID,1231.5,79.5

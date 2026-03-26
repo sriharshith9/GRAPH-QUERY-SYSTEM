@@ -1,0 +1,39 @@
+address_id,customer_id,street,city,state,zip,address_type
+A0001,C0001,4841 Main St,Houston,TX,20458,shipping
+A0002,C0001,6327 Main St,Los Angeles,CA,46434,billing
+A0003,C0001,2764 Main St,Philadelphia,PA,58520,billing
+A0004,C0002,1269 Main St,Phoenix,AZ,89840,shipping
+A0005,C0003,2777 Main St,Houston,TX,70589,billing
+A0006,C0003,9225 Main St,Phoenix,AZ,38785,billing
+A0007,C0003,3852 Main St,New York,NY,14207,billing
+A0008,C0004,1184 Main St,Phoenix,AZ,37653,billing
+A0009,C0004,8279 Main St,Houston,TX,61856,billing
+A0010,C0005,2387 Main St,Phoenix,AZ,42325,billing
+A0011,C0006,7119 Main St,San Jose,CA,86484,billing
+A0012,C0006,3693 Main St,Philadelphia,PA,28131,billing
+A0013,C0006,871 Main St,Los Angeles,CA,24371,shipping
+A0014,C0007,7016 Main St,Chicago,IL,88172,shipping
+A0015,C0007,6352 Main St,San Antonio,TX,88104,billing
+A0016,C0007,4219 Main St,Dallas,TX,82512,shipping
+A0017,C0008,8897 Main St,Los Angeles,CA,44973,billing
+A0018,C0008,4908 Main St,Los Angeles,CA,66985,shipping
+A0019,C0008,153 Main St,San Diego,CA,44522,shipping
+A0020,C0009,4989 Main St,Los Angeles,CA,93748,shipping
+A0021,C0009,6226 Main St,Chicago,IL,31174,shipping
+A0022,C0009,5410 Main St,San Jose,CA,74042,shipping
+A0023,C0010,5138 Main St,Philadelphia,PA,41385,shipping
+A0024,C0011,1390 Main St,San Jose,CA,21226,billing
+A0025,C0012,2160 Main St,Dallas,TX,26828,billing
+A0026,C0013,4442 Main St,Chicago,IL,79163,billing
+A0027,C0013,8935 Main St,Houston,TX,36365,billing
+A0028,C0013,6218 Main St,San Antonio,TX,67422,billing
+A0029,C0014,3781 Main St,Houston,TX,18392,billing
+A0030,C0015,9175 Main St,San Jose,CA,40161,shipping
+A0031,C0016,1064 Main St,Los Angeles,CA,40007,shipping
+A0032,C0017,1260 Main St,Philadelphia,PA,77391,shipping
+A0033,C0018,3610 Main St,San Diego,CA,80678,shipping
+A0034,C0018,9540 Main St,San Jose,CA,71953,shipping
+A0035,C0019,3219 Main St,San Antonio,TX,22363,shipping
+A0036,C0019,5904 Main St,San Antonio,TX,65519,billing
+A0037,C0020,1712 Main St,New York,NY,17944,billing
+A0038,C0020,1890 Main St,Philadelphia,PA,42591,shipping
